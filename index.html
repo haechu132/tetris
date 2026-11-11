@@ -19,6 +19,9 @@
   .keys b { color:var(--text); font-weight:500; }
   button { background:#3d6df2; color:#fff; border:0; border-radius:6px; padding:10px; font-size:15px; cursor:pointer; }
   button:hover { background:#5480ff; }
+  button:disabled { background:#3a3f4b; color:#8a90a0; cursor:default; }
+  #pause { background:#3a3f4b; }
+  #pause:hover:not(:disabled) { background:#4a5060; }
   #overlay { position:absolute; inset:0; display:none; align-items:center; justify-content:center;
              background:rgba(0,0,0,.6); font-size:26px; font-weight:700; border-radius:6px; text-align:center; }
   .boardWrap { position:relative; }
@@ -36,13 +39,14 @@
     <div class="box"><div class="label">줄</div><div class="value" id="lines">0</div></div>
     <div class="box"><div class="label">레벨</div><div class="value" id="level">1</div></div>
     <button id="start">시작</button>
+    <button id="pause" disabled>일시정지</button>
     <div class="box keys">
       <b>← →</b> 이동<br>
       <b>↑ / X</b> 회전<br>
       <b>Z</b> 반대 회전<br>
       <b>↓</b> 천천히 내리기<br>
       <b>Space</b> 바로 떨어뜨리기<br>
-      <b>P</b> 일시정지
+      <b>P / Esc</b> 일시정지
     </div>
   </div>
 </div>
@@ -218,6 +222,7 @@ function showOverlay(text) { overlay.innerHTML = text; overlay.style.display = t
 
 function gameOver() {
   over = true; running = false;
+  pauseBtn.disabled = true;
   showOverlay('게임 오버<br><span style="font-size:16px;font-weight:400">점수 ' + score + '</span>');
   document.getElementById('start').textContent = '다시 시작';
 }
@@ -231,6 +236,7 @@ function start() {
   updateStats();
   showOverlay('');
   document.getElementById('start').textContent = '다시 시작';
+  pauseBtn.disabled = false; pauseBtn.textContent = '일시정지';
   lastTime = performance.now();
   board.focus();
 }
@@ -251,7 +257,7 @@ function loop(t) {
 
 document.addEventListener('keydown', e => {
   if (!running) return;
-  if (e.code === 'KeyP') { paused = !paused; showOverlay(paused ? '일시정지' : ''); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
   if (paused) return;
   switch (e.code) {
     case 'ArrowLeft': move(-1, 0); break;
@@ -264,6 +270,19 @@ document.addEventListener('keydown', e => {
   }
   e.preventDefault();
 });
+
+const pauseBtn = document.getElementById('pause');
+
+function togglePause(force) {
+  if (!running) return;
+  paused = force === undefined ? !paused : force;
+  showOverlay(paused ? '일시정지<br><span style="font-size:15px;font-weight:400">P 또는 Esc로 계속</span>' : '');
+  pauseBtn.textContent = paused ? '계속하기' : '일시정지';
+  if (!paused) lastTime = performance.now();
+}
+
+pauseBtn.addEventListener('click', e => { e.target.blur(); togglePause(); });
+window.addEventListener('blur', () => { if (running && !paused) togglePause(true); });
 
 document.getElementById('start').addEventListener('click', e => { e.target.blur(); start(); });
 
