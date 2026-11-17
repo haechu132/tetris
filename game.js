@@ -16,9 +16,12 @@
  * score                | 점수 변경                    | { score, delta }
  * levelup              | 레벨 상승                    | { level }
  * pause / resume       | 일시정지 / 계속              | {}
+ * draw                 | 매 프레임 보드를 그린 직후   | { ctx, size, cols, rows }  (보드 위에 덧그리기용)
  * gameover             | 꼭대기에 닿아 게임 종료      | { score, lines, level }
  *
  * 그 외: NULLBLOCK.off(name, fn), NULLBLOCK.getState()
+ *   getState().piece = { type, x, y, shape }  (shape는 현재 회전 상태의 0/1 배열)
+ *   getState().grid[y][x] = 비었으면 null, 차 있으면 블록 종류 문자
  */
 (() => {
   const COLS = 10, ROWS = 20, SIZE = 30;
@@ -168,12 +171,6 @@
     dropTimer = 0;
   }
 
-  function ghostY() {
-    let y = piece.y;
-    while (!collides(piece.shape, piece.x, y + 1)) y++;
-    return y;
-  }
-
   // ---------- 그리기 ----------
   function drawCell(c, x, y, color, size, alpha = 1) {
     c.globalAlpha = alpha;
@@ -193,8 +190,6 @@
     grid.forEach((row, y) => row.forEach((t, x) => { if (t) drawCell(ctx, x, y, COLORS[t], SIZE); }));
 
     if (piece && !over) {
-      const gy = ghostY();
-      cellsOf(piece.shape, piece.x, gy).forEach(({ x, y }) => { if (y >= 0) drawCell(ctx, x, y, COLORS[piece.type], SIZE, 0.2); });
       cellsOf(piece.shape, piece.x, piece.y).forEach(({ x, y }) => { if (y >= 0) drawCell(ctx, x, y, COLORS[piece.type], SIZE); });
     }
   }
@@ -223,7 +218,6 @@
     over = true; running = false;
     pauseBtn.disabled = true;
     startBtn.textContent = '다시 시작';
-    showOverlay(`<div>게임 오버<small>점수 ${score}</small></div>`);
     emit('gameover', { score, lines, level });
   }
 
@@ -262,7 +256,7 @@
         dropTimer = 0;
       }
     }
-    if (grid) draw();
+    if (grid) { draw(); emit('draw', { ctx, size: SIZE, cols: COLS, rows: ROWS }); }
     requestAnimationFrame(loop);
   }
 
@@ -292,7 +286,7 @@
     getState: () => ({
       cols: COLS, rows: ROWS, score, lines, level, running, paused, over,
       grid: grid.map(r => r.slice()),
-      piece: piece && { type: piece.type, x: piece.x, y: piece.y },
+      piece: piece && { type: piece.type, x: piece.x, y: piece.y, shape: piece.shape.map(r => r.slice()) },
       next: nextType,
     }),
   };
